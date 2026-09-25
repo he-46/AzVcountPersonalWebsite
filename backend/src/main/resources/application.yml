@@ -1,0 +1,45 @@
+spring:
+  config:
+    # 支持从项目根目录或 backend 目录启动；系统环境变量仍会覆盖文件值。
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3307/azv?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:azv_app}
+    password: ${DB_PASSWORD:}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:2s}
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 40MB
+
+server:
+  port: ${SERVER_PORT:8080}
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true   # 下划线自动转驼峰
+
+upload:
+  dir: ${UPLOAD_DIR:./uploads}
+
+resume:
+  storage-dir: ${RESUME_STORAGE_DIR:./data/resume}
+
+jwt:
+  secret: ${JWT_SECRET}
+  expire-hours: ${JWT_EXPIRE_HOURS:24}
+
+security:
+  client-ip:
+    # 仅在应用只能由覆盖 X-Forwarded-For 的可信反向代理访问时开启。
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+  auth-cookie:
+    secure: ${AUTH_COOKIE_SECURE:false}

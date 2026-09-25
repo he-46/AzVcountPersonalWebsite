@@ -1,0 +1,38 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Java
+backend/target/
+*.class
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+.pnpm-store/
+
+# Runtime data
+backend/uploads/
+backend/data/
+uploads/
+data/
+
+# IDE and OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Local/tooling placeholder directories (the project root is the repository root)
+AZVPW/
+.github/modernize/
+backend/.github/modernize/
+
+# Logs and temporary files
+*.log
+*.tmp
+out/

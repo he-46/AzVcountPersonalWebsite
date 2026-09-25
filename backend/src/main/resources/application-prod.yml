@@ -1,0 +1,48 @@
+# ===== 生产环境配置（--spring.profiles.active=prod 时加载）=====
+# 覆盖 application.yml 的同名配置项；密码/密钥从环境变量读，不写死在文件
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/azv?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USERNAME:azv_app}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:2s}
+
+server:
+  # 生产服务仅供同机 Nginx 反向代理访问，避免客户端伪造转发头。
+  address: 127.0.0.1
+  port: ${SERVER_PORT:8080}
+  forward-headers-strategy: native
+  servlet:
+    session:
+      cookie:
+        secure: true
+  tomcat:
+    remoteip:
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      internal-proxies: '${TRUSTED_PROXY_REGEX:127\.0\.0\.1|::1}'
+
+# 图片存储目录：生产用绝对路径（systemd 的 WorkingDirectory=/opt/azv）
+upload:
+  dir: ${UPLOAD_DIR:/opt/azv/uploads}
+
+# 简历使用固定文件名存放，不暴露为通用静态目录
+resume:
+  storage-dir: ${RESUME_STORAGE_DIR:/opt/azv/data/resume}
+
+# JWT 密钥：生产走环境变量（>=32 字节随机串）
+jwt:
+  secret: ${JWT_SECRET}
+  expire-hours: ${JWT_EXPIRE_HOURS:24}
+
+security:
+  client-ip:
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:true}
+  auth-cookie:
+    secure: ${AUTH_COOKIE_SECURE:true}
