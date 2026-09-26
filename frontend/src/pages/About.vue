@@ -1,5 +1,5 @@
 <template>
-  <section class="hero container">
+  <section class="hero container about-hero">
     <div class="mono-kicker">// portfolio — 2027届</div>
     <h1>AzV</h1>
     <div class="serif-italic" style="margin-bottom:24px">把技术讲清楚，把系统搭结实</div>
@@ -69,14 +69,14 @@
     </div>
   </section>
 
-  <section class="container band" style="padding-top:0">
+  <section class="container band portfolio-section" style="padding-top:0">
     <h2 class="section-title">项目经验</h2>
     <div v-if="projectsLoading" class="muted" aria-live="polite">加载中…</div>
     <div v-else-if="projectsError" class="card resume-state resume-state-error" role="alert">
       <span>{{ projectsError }}</span>
       <button class="btn btn-ghost btn-sm" type="button" @click="loadProjects">重试</button>
     </div>
-    <template v-else>
+    <div v-else class="portfolio-list">
       <div v-for="p in projects" :key="p.id" class="portfolio-item">
         <h3>
           <a
@@ -92,10 +92,10 @@
         <div class="tech">{{ p.techStack }}</div>
       </div>
       <p v-if="!projects.length" class="muted">项目内容正在整理中。</p>
-    </template>
+    </div>
   </section>
 
-  <section class="container" style="padding-bottom:96px">
+  <section class="container contact-section" style="padding-bottom:96px">
     <h2 class="section-title">联系方式</h2>
     <div class="card" style="display:flex;flex-wrap:wrap;gap:24px">
       <span class="muted">邮箱：<a href="mailto:2890966805@qq.com" class="contact-link">2890966805@qq.com</a></span>

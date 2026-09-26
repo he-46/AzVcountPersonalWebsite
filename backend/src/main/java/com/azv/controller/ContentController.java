@@ -31,6 +31,7 @@ import java.util.Locale;
 public class ContentController {
 
     private static final long MAX_PAGE_SIZE = 100;
+    private static final long MAX_COMMENT_PAGE_SIZE = 50;
 
     private final ContentMapper contentMapper;
     private final ContentImageMapper contentImageMapper;
@@ -110,17 +111,23 @@ public class ContentController {
 
     /** 某帖子的已审核评论；评论实体的审核和访问者信息不会出现在响应中。 */
     @GetMapping("/{id}/comments")
-    public R<List<PublicCommentDto>> comments(@PathVariable Long id) {
+    public R<Page<PublicCommentDto>> comments(@PathVariable Long id,
+                                              @RequestParam(defaultValue = "1") long page,
+                                              @RequestParam(defaultValue = "20") long size) {
         requirePublicPost(id);
-        return R.ok(contentMapper.selectList(
-                        new LambdaQueryWrapper<Content>()
-                                .eq(Content::getParentId, id)
-                                .eq(Content::getType, ContentType.COMMENT)
-                                .eq(Content::getStatus, ContentStatus.APPROVED)
-                                .orderByAsc(Content::getCreatedAt))
-                .stream()
-                .map(PublicCommentDto::from)
-                .toList());
+        long safePage = Math.max(1, page);
+        long safeSize = Math.max(1, Math.min(size, MAX_COMMENT_PAGE_SIZE));
+        Page<Content> entityPage = contentMapper.selectPage(new Page<>(safePage, safeSize),
+                new LambdaQueryWrapper<Content>()
+                        .eq(Content::getParentId, id)
+                        .eq(Content::getType, ContentType.COMMENT)
+                        .eq(Content::getStatus, ContentStatus.APPROVED)
+                        .orderByAsc(Content::getCreatedAt)
+                        .orderByAsc(Content::getId));
+        Page<PublicCommentDto> publicPage = new Page<>(
+                entityPage.getCurrent(), entityPage.getSize(), entityPage.getTotal());
+        publicPage.setRecords(entityPage.getRecords().stream().map(PublicCommentDto::from).toList());
+        return R.ok(publicPage);
     }
 
     private Content requirePublicPost(Long id) {

@@ -28,9 +28,11 @@ public class ReportController {
     private final ClientIpResolver clientIpResolver;
 
     @PostMapping
-    public R<Void> report(@RequestParam Long contentId,
-                          @RequestParam String reason,
+    public R<Void> report(@RequestBody ReportRequest payload,
                           HttpServletRequest request) {
+        Long contentId = payload.contentId();
+        String reason = payload.reason();
+        if (contentId == null) throw new BizException("内容不存在");
         String ip = clientIpResolver.resolve(request);
         String cleanReason = reason == null ? "" : reason.trim();
         if (cleanReason.isEmpty()) throw new BizException("请填写举报原因");
@@ -58,5 +60,7 @@ public class ReportController {
         reportMapper.insert(r);
         return R.ok(null);
     }
+
+    public record ReportRequest(Long contentId, String reason) {}
 
 }

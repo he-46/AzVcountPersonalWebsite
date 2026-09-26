@@ -22,7 +22,7 @@
       <button class="btn btn-ghost btn-sm" type="button" @click="loadPage">重试</button>
     </div>
 
-    <article v-else-if="post">
+    <article v-else-if="post" class="post-article">
       <div style="margin-top:16px" class="post-meta">
         <span>{{ post.createdAt }} · {{ post.authorLabel || 'AzV（站长）' }}</span>
         <span v-if="post.type" class="tag">{{ post.type }}</span>
@@ -61,13 +61,13 @@
             id="report-reason"
             v-model="reportReason"
             class="textarea"
-            maxlength="300"
+            maxlength="255"
             placeholder="请简要说明问题"
             required
           ></textarea>
         </div>
         <div class="flex-between">
-          <span class="hint" style="margin:0">仅用于内容审核，最多 300 字</span>
+          <span class="hint" style="margin:0">仅用于内容审核，最多 255 字</span>
           <div style="display:flex;gap:8px">
             <button class="btn btn-ghost btn-sm" type="button" @click="cancelReport">取消</button>
             <button class="btn btn-primary btn-sm" type="submit" :disabled="reporting || !reportReason.trim()">
@@ -101,6 +101,12 @@
       <p style="color:var(--body);font-size:14px">{{ c.body }}</p>
     </div>
     <p v-if="!comments.length" class="muted" style="padding:16px 0">还没有评论，来抢沙发～</p>
+    <div v-if="comments.length" class="load-more-row" aria-live="polite">
+      <p v-if="commentsError" class="form-message form-message-error" role="alert">{{ commentsError }}</p>
+      <button v-if="commentsHasMore" class="btn btn-ghost btn-sm" type="button" :disabled="commentsLoadingMore" @click="loadMoreComments">
+        {{ commentsLoadingMore ? '加载中…' : '加载更多评论' }}
+      </button>
+    </div>
 
     <form class="card" @submit.prevent="submitComment">
       <div class="field">
@@ -109,7 +115,7 @@
       </div>
       <div class="field">
         <label for="comment-body">评论内容</label>
-        <textarea id="comment-body" v-model="commentText" class="textarea" maxlength="1000" placeholder="友善交流，敏感词会被拦截…" required></textarea>
+        <textarea id="comment-body" v-model="commentText" class="textarea" maxlength="500" placeholder="友善交流，敏感词会被拦截…" required></textarea>
       </div>
       <p
         v-if="commentMessage"
@@ -138,6 +144,11 @@ import MarkdownView from '../components/MarkdownView.vue'
 const route = useRoute()
 const post = ref(null)
 const comments = ref([])
+const commentPage = ref(1)
+const commentPageSize = 20
+const commentsHasMore = ref(false)
+const commentsLoadingMore = ref(false)
+const commentsError = ref('')
 const images = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -166,23 +177,45 @@ async function loadPage() {
   notFound.value = false
   post.value = null
   comments.value = []
+  commentPage.value = 1
+  commentsHasMore.value = false
+  commentsError.value = ''
   images.value = []
 
   try {
     const [detailData, commentData] = await Promise.all([
       api.getContent(route.params.id),
-      api.listComments(route.params.id)
+      api.listComments(route.params.id, { page: 1, size: commentPageSize })
     ])
     const content = detailData?.content || detailData
     post.value = content
     images.value = detailData?.images || content?.images || []
-    comments.value = Array.isArray(commentData) ? commentData : (commentData?.records || [])
+    comments.value = commentData?.records || []
+    commentsHasMore.value = Number(commentData?.current || 1) < Number(commentData?.pages || 0)
     if (content?.title) document.title = `${content.title} — AzV`
   } catch (e) {
     if (isNotFoundError(e)) notFound.value = true
     else error.value = e.message || '网络异常，请稍后重试'
   } finally {
     loading.value = false
+  }
+}
+
+async function loadMoreComments() {
+  if (commentsLoadingMore.value || !commentsHasMore.value) return
+  commentsLoadingMore.value = true
+  commentsError.value = ''
+  try {
+    const nextPage = commentPage.value + 1
+    const data = await api.listComments(route.params.id, { page: nextPage, size: commentPageSize })
+    const knownIds = new Set(comments.value.map(comment => comment.id))
+    comments.value.push(...(data?.records || []).filter(comment => !knownIds.has(comment.id)))
+    commentPage.value = nextPage
+    commentsHasMore.value = nextPage < Number(data?.pages || 0)
+  } catch (e) {
+    commentsError.value = e.message || '更多评论加载失败'
+  } finally {
+    commentsLoadingMore.value = false
   }
 }
 

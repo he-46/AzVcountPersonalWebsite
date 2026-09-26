@@ -24,6 +24,8 @@ import java.util.ArrayList;
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @RestController
 @RequestMapping("/api/submit")
@@ -70,50 +72,71 @@ public class SubmitController {
 
         // ③ 图片可选：最多 3 张，逐张存储
         List<StoredImage> storedList = new ArrayList<>();
-        if (files != null && !files.isEmpty()) {
-            if (files.size() > 3) throw new BizException("最多上传 3 张图片");
-            for (MultipartFile f : files) {
-                if (f == null || f.isEmpty()) continue;
-                try {
-                    storedList.add(storageService.store(f));   // 每张走魔数/大小/缩略图
-                } catch (BizException e) {
-                    throw e;
-                } catch (Exception e) {
-                    throw new BizException("图片处理失败，请重试");
+        try {
+            if (files != null && !files.isEmpty()) {
+                if (files.size() > 3) throw new BizException("最多上传 3 张图片");
+                for (MultipartFile f : files) {
+                    if (f == null || f.isEmpty()) continue;
+                    try {
+                        storedList.add(storageService.store(f));   // 每张走魔数/大小/缩略图
+                    } catch (BizException e) {
+                        throw e;
+                    } catch (Exception e) {
+                        throw new BizException("图片处理失败，请重试");
+                    }
                 }
             }
-        }
 
-        // ④ 先存话题，拿到 id
-        Content c = new Content();
-        c.setType(ContentType.POST);
-        c.setSource(SourceType.SUBMIT);
-        c.setTitle(t);
-        c.setBody(cleanBody);
-        if (!storedList.isEmpty()) {
-            c.setMediaUrl(storedList.get(0).url());            // 第一张作封面（兼容旧逻辑）
-            c.setThumbnailUrl(storedList.get(0).thumbnailUrl());
-        }
-        c.setStatus(ContentStatus.PENDING);
-        c.setIp(ip);
-        c.setUa(limit(request.getHeader("User-Agent"), 255));
-        String cleanNickname = nickname == null ? "" : nickname.trim();
-        c.setAuthorLabel(cleanNickname.isBlank()
-                ? "游客 #" + ThreadLocalRandom.current().nextInt(1000, 10000)
-                : limit(cleanNickname, MAX_NICKNAME_LENGTH));
-        contentMapper.insert(c);                               // 注意：insert 后 c.getId() 有值
+            // ④ 先存话题，拿到 id
+            Content c = new Content();
+            c.setType(ContentType.POST);
+            c.setSource(SourceType.SUBMIT);
+            c.setTitle(t);
+            c.setBody(cleanBody);
+            if (!storedList.isEmpty()) {
+                c.setMediaUrl(storedList.get(0).url());            // 第一张作封面（兼容旧逻辑）
+                c.setThumbnailUrl(storedList.get(0).thumbnailUrl());
+            }
+            c.setStatus(ContentStatus.PENDING);
+            c.setIp(ip);
+            c.setUa(limit(request.getHeader("User-Agent"), 255));
+            String cleanNickname = nickname == null ? "" : nickname.trim();
+            c.setAuthorLabel(cleanNickname.isBlank()
+                    ? "游客 #" + ThreadLocalRandom.current().nextInt(1000, 10000)
+                    : limit(cleanNickname, MAX_NICKNAME_LENGTH));
+            contentMapper.insert(c);                               // 注意：insert 后 c.getId() 有值
 
-        // ⑤ 再存图片表（主外键关联）
-        for (int i = 0; i < storedList.size(); i++) {
-            StoredImage s = storedList.get(i);
-            ContentImage img = new ContentImage();
-            img.setContentId(c.getId());                       // 关键：用话题的 id 关联
-            img.setUrl(s.url());
-            img.setThumbnailUrl(s.thumbnailUrl());
-            img.setSortOrder(i);
-            contentImageMapper.insert(img);
+            // ⑤ 再存图片表（主外键关联）
+            for (int i = 0; i < storedList.size(); i++) {
+                StoredImage s = storedList.get(i);
+                ContentImage img = new ContentImage();
+                img.setContentId(c.getId());                       // 关键：用话题的 id 关联
+                img.setUrl(s.url());
+                img.setThumbnailUrl(s.thumbnailUrl());
+                img.setSortOrder(i);
+                contentImageMapper.insert(img);
+            }
+            // 数据库提交失败时，补偿删除本次已落盘的文件。
+            if (!storedList.isEmpty() && TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) cleanupImages(storedList);
+                    }
+                });
+            }
+            return R.ok(null);
+        } catch (RuntimeException | Error e) {
+            cleanupImages(storedList);
+            throw e;
         }
-        return R.ok(null);
+    }
+
+    private void cleanupImages(List<StoredImage> storedList) {
+        for (StoredImage image : storedList) {
+            try { storageService.delete(image.url()); } catch (RuntimeException ignored) { /* preserve original failure */ }
+            try { storageService.delete(image.thumbnailUrl()); } catch (RuntimeException ignored) { /* preserve original failure */ }
+        }
     }
 
     private String limit(String value, int maxLength) {

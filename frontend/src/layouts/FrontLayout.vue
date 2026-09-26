@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="front-shell">
     <nav class="nav-bar">
       <div class="nav-inner">
         <router-link class="nav-brand" to="/"><b>AzV</b></router-link>

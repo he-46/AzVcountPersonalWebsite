@@ -6,11 +6,11 @@ export const api = {
   // ===== 公开 =====
   listContent: (params) => http.get('/content/list', { params }),          // {page,size,type}
   getContent: (id) => http.get(`/content/${id}`),
-  listComments: (id) => http.get(`/content/${id}/comments`),
-  postComment: (data) => http.post('/comment', null, { params: data }),    // {contentId,text,nickname}
+  listComments: (id, params) => http.get(`/content/${id}/comments`, { params }),
+  postComment: (data) => http.post('/comment', data),                     // JSON {contentId,text,nickname}
   submitImage: (formData) => http.post('/submit', formData),               // multipart
   like: (id) => http.post(`/like/${id}`),
-  report: (data) => http.post('/report', null, { params: data }),          // {contentId,reason}
+  report: (data) => http.post('/report', data),                           // JSON {contentId,reason}
   listPortfolio: () => http.get('/portfolio'),
   getResume: () => http.get('/resume'),
 

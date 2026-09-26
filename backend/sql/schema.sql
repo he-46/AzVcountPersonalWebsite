@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS content (
   author_label VARCHAR(50) DEFAULT NULL,
   sort_weight INT NOT NULL DEFAULT 0 COMMENT '置顶权重，1=置顶',
   KEY idx_status_type (status, type, created_at),
+  KEY idx_comment_feed (parent_id, type, status, created_at, id),
   KEY idx_ip (ip)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

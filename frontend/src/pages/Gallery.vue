@@ -1,5 +1,5 @@
 <template>
-  <section class="band container">
+  <section class="band container gallery-page">
     <div class="mono-kicker">// gallery — approved only</div>
     <h1 class="section-title" style="margin-bottom:8px">图片墙</h1>
     <p class="muted" style="margin-bottom:32px">

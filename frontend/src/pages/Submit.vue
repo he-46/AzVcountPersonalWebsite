@@ -1,5 +1,5 @@
 <template>
-  <section class="container band" style="max-width:720px">
+  <section class="container band submit-page" style="max-width:720px">
     <div class="mono-kicker">// submit — review before publish</div>
     <h1 class="section-title">话题投稿</h1>
     <p class="muted" style="margin-bottom:32px">分享你的想法或作品。所有投稿经站长审核后才会公开展示。</p>

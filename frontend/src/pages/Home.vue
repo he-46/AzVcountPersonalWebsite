@@ -1,9 +1,15 @@
 <template>
-  <section class="hero container">
-    <div class="mono-kicker">// personal site — built with Spring Boot 3 + Vue3</div>
-    <h1>AzV 的个人站点</h1>
-    <div class="serif-italic" style="margin-bottom:24px">代码、思考，与作品集</div>
-    <p class="sub">Java 全栈学习者</p>
+  <section class="hero container home-hero">
+    <div class="home-hero-copy">
+      <div class="mono-kicker">// PERSONAL SITE · CODE / IDEAS / WORK</div>
+      <h1>记录<span class="hero-accent">想法</span>，<br>构建作品。</h1>
+      <p class="home-hero-sub">你好，我是 AzV。一名 Java 全栈学习者，在这里分享技术笔记、思考和正在打磨的作品。</p>
+      <div class="home-hero-actions">
+        <a class="btn btn-primary" href="#latest">阅读文章 ↗</a>
+        <router-link class="btn btn-ghost" to="/about">了解我 →</router-link>
+      </div>
+    </div>
+    <div class="home-hero-art" aria-hidden="true"><span class="art-index">FIG. 01 / AZV</span><span class="art-note">IDEAS INTO INTERFACES</span></div>
   </section>
 
   <form class="container search-row" role="search" @submit.prevent="search">
@@ -45,11 +51,12 @@
     </div>
   </div>
 
-  <section class="container content-feed">
-    <div class="flex-between" style="margin-bottom:24px">
-      <h2 class="section-title" style="margin:0">最新内容</h2>
-      <router-link class="btn btn-ghost btn-sm" to="/gallery">图片墙 →</router-link>
-    </div>
+  <section id="latest" class="container content-feed home-content-grid">
+    <div class="home-feed-column">
+      <div class="home-section-heading">
+        <div><span class="mono-kicker">01 / JOURNAL</span><h2 class="section-title">最新内容</h2></div>
+        <span class="home-heading-note">近期发布的文章与记录</span>
+      </div>
 
     <div v-if="loading" class="card page-state" aria-live="polite">
       <span class="state-spinner" aria-hidden="true"></span>
@@ -64,14 +71,10 @@
     </div>
 
     <template v-else>
-      <router-link v-for="c in contents" :key="c.id" class="card post-card" :to="`/post/${c.id}`">
-        <h3>{{ c.title || '未命名' }}</h3>
-        <p>{{ excerptFor(c) }}</p>
-        <div class="post-meta">
-          <span>{{ c.createdAt }}</span>
-          <span v-if="c.type" class="tag">{{ c.type }}</span>
-          <span>♥ {{ c.likeCount || 0 }}</span>
-        </div>
+      <router-link v-for="c in contents" :key="c.id" class="home-post" :to="`/post/${c.id}`">
+        <span class="home-post-date">{{ c.createdAt?.slice(0, 10) || '—' }}</span>
+        <span class="home-post-body"><strong>{{ c.title || '未命名' }}</strong><small>{{ excerptFor(c) }}</small><span class="home-post-meta">{{ c.authorLabel || 'AzV' }} · ♥ {{ c.likeCount || 0 }}</span></span>
+        <span class="home-post-arrow" aria-hidden="true">↗</span>
       </router-link>
 
       <p v-if="!contents.length" class="muted" style="padding:24px 0">暂无内容</p>
@@ -84,6 +87,25 @@
         <span v-else class="hint">已经到底了</span>
       </div>
     </template>
+    </div>
+    <aside class="home-side-stack" aria-label="关于与图库">
+      <div class="home-panel home-profile-panel">
+        <span class="mono-kicker">02 / ABOUT</span>
+        <div class="home-profile-row"><span class="home-avatar">A</span><div><strong>AzV</strong><small>Java 全栈学习者</small></div></div>
+        <p>持续学习，认真创造。这个站点是我的作品集，也是开放的个人笔记。</p>
+        <router-link class="home-text-link" to="/about">探索作品集 ↗</router-link>
+      </div>
+      <div class="home-panel home-gallery-panel">
+        <div class="home-panel-heading"><span class="mono-kicker">03 / VISUALS</span><router-link class="home-text-link" to="/gallery">全部 →</router-link></div>
+        <h3>图片墙</h3>
+        <div v-if="galleryPreview.length" class="home-gallery-preview">
+          <router-link v-for="item in galleryPreview" :key="item.id" :to="`/post/${item.id}`" :aria-label="item.title || '查看图片'">
+            <img :src="imageFor(item)" :alt="item.title || '图片墙作品'" loading="lazy" decoding="async">
+          </router-link>
+        </div>
+        <p v-else class="muted">{{ galleryError ? '图库暂时无法加载' : '更多视觉作品，正在路上。' }}</p>
+      </div>
+    </aside>
   </section>
 </template>
 
@@ -98,6 +120,21 @@ const loadError = ref('')
 const page = ref(1)
 const size = 8
 const hasMore = ref(false)
+const galleryPreview = ref([])
+const galleryError = ref(false)
+
+function imageFor(item) {
+  return item.thumbnailUrl || item.mediaUrl || item.coverUrl || item.images?.[0]?.thumbnailUrl || item.images?.[0]?.url || ''
+}
+
+async function loadGalleryPreview() {
+  try {
+    const data = await api.listContent({ page: 1, size: 12, type: 'POST', withMedia: true })
+    galleryPreview.value = pageRecords(data).filter(imageFor).slice(0, 4)
+  } catch {
+    galleryError.value = true
+  }
+}
 
 function pageRecords(data) {
   return Array.isArray(data) ? data : (data?.records || [])
@@ -185,5 +222,5 @@ function clearSearch() {
   searchResults.value = []
 }
 
-onMounted(() => load(true))
+onMounted(() => { load(true); loadGalleryPreview() })
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <section class="container band" style="max-width:420px">
+  <section class="container band login-page" style="max-width:420px">
     <div class="mono-kicker">// admin access</div>
     <h1 class="section-title">站长登录</h1>
     <p class="muted" style="margin-bottom:32px">本网站不开放注册，仅站长账号可登录后台。</p>

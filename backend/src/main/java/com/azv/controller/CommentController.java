@@ -31,11 +31,13 @@ public class CommentController {
     private static final int MAX_PER_HOUR = 10;
 
     @PostMapping
-    public R<Void> submit(@RequestParam Long contentId,
-                          @RequestParam String text,
-                          @RequestParam(required = false) String nickname,
+    public R<Void> submit(@RequestBody CommentRequest payload,
                           HttpServletRequest request) {
+        Long contentId = payload.contentId();
+        String text = payload.text();
+        String nickname = payload.nickname();
         // ① 参数校验
+        if (contentId == null) throw new BizException("评论的目标不存在");
         String clean = text == null ? "" : text.trim();
         if (clean.isEmpty()) throw new BizException("评论内容不能为空");
         if (clean.length() > MAX_LEN) throw new BizException("评论最长" + MAX_LEN + "字");
@@ -79,5 +81,7 @@ public class CommentController {
         if (value == null) return null;
         return value.substring(0, Math.min(value.length(), maxLength));
     }
+
+    public record CommentRequest(Long contentId, String text, String nickname) {}
 
 }

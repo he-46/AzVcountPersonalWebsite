@@ -1,5 +1,5 @@
 <template>
-  <section class="container not-found-page">
+  <section class="container not-found-page missing-page">
     <div class="mono-kicker">// 404 — page not found</div>
     <div class="state-code">404</div>
     <h1>页面走丢了</h1>

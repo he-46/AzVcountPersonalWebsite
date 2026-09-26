@@ -1,5 +1,5 @@
 <template>
-  <section class="container band" style="max-width:760px">
+  <section class="container band terms-page" style="max-width:760px">
     <div class="mono-kicker">// terms — compliance</div>
     <h1 class="section-title">用户协议与免责声明</h1>
 
