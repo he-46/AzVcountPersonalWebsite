@@ -211,3 +211,5 @@ server {
 - 发布后重新登录；旧版无 `jti` 的 Cookie 或使用旧密钥签发的 Cookie 会失效。
 
 本轮优化的详细记录、兼容性说明和后续建议见 [`docs/OPTIMIZATION_LOG.md`](./docs/OPTIMIZATION_LOG.md)。
+
+想逐步理解每个功能的实现，可阅读面向初学者的 [`功能实现教程`](./docs/FUNCTION_IMPLEMENTATION_GUIDE.md)。

@@ -111,6 +111,78 @@
       ></iframe>
       <p class="resume-fallback hint">浏览器未显示 PDF？可点击“新窗口查看”。</p>
     </section>
+
+    <section class="portfolio-admin" aria-labelledby="portfolio-admin-title">
+      <div class="resume-heading">
+        <div>
+          <div class="mono-kicker">// portfolio — project experience</div>
+          <h2 id="portfolio-admin-title" class="section-title">项目经历管理</h2>
+          <p class="muted">已公开的项目会按排序数字从小到大显示在“关于”页面。</p>
+        </div>
+        <button class="btn btn-ghost btn-sm" type="button" :disabled="projectsLoading || projectSaving" @click="loadProjects">刷新列表</button>
+      </div>
+
+      <p v-if="projectsError" class="resume-message resume-message-error" role="alert">{{ projectsError }}</p>
+      <p v-if="projectSuccess" class="resume-message resume-message-success" role="status">{{ projectSuccess }}</p>
+
+      <div class="portfolio-admin-grid">
+        <div class="card portfolio-admin-list">
+          <h3>现有项目</h3>
+          <p v-if="projectsLoading" class="muted" aria-live="polite">正在加载项目…</p>
+          <p v-else-if="!projects.length" class="muted">还没有项目经历，请在右侧添加。</p>
+          <div v-for="project in projects" :key="project.id" class="portfolio-admin-item">
+            <div class="portfolio-admin-item-head">
+              <strong>{{ project.title }}</strong>
+              <span :class="['badge', project.status === 'APPROVED' ? 'badge-ok' : '']">{{ project.status === 'APPROVED' ? '已公开' : '未公开' }}</span>
+            </div>
+            <p>{{ project.summary || '暂无简介' }}</p>
+            <div class="portfolio-admin-meta">排序 {{ project.sortOrder ?? 0 }} · {{ project.techStack || '未填技术栈' }}</div>
+            <div class="portfolio-admin-actions">
+              <button class="btn btn-ghost btn-sm" type="button" :disabled="projectSaving" @click="editProject(project)">编辑</button>
+              <button class="btn btn-ghost btn-sm" type="button" :disabled="projectSaving" @click="deleteProject(project)">删除</button>
+            </div>
+          </div>
+        </div>
+
+        <form class="card portfolio-admin-form" @submit.prevent="saveProject">
+          <div class="resume-card-title">
+            <h3>{{ editingProjectId ? '编辑项目' : '新增项目' }}</h3>
+            <button v-if="editingProjectId" class="btn btn-ghost btn-sm" type="button" :disabled="projectSaving" @click="resetProjectForm">取消编辑</button>
+          </div>
+          <div class="field">
+            <label for="project-title">项目名称 *</label>
+            <input id="project-title" v-model.trim="projectForm.title" class="input" required maxlength="120" :disabled="projectSaving">
+          </div>
+          <div class="field">
+            <label for="project-summary">项目简介</label>
+            <textarea id="project-summary" v-model.trim="projectForm.summary" class="textarea" maxlength="500" :disabled="projectSaving"></textarea>
+          </div>
+          <div class="field">
+            <label for="project-tech">技术栈</label>
+            <input id="project-tech" v-model.trim="projectForm.techStack" class="input" maxlength="255" placeholder="例如：Vue 3、Spring Boot、MySQL" :disabled="projectSaving">
+          </div>
+          <div class="field">
+            <label for="project-link">项目链接</label>
+            <input id="project-link" v-model.trim="projectForm.link" class="input" type="url" maxlength="255" placeholder="https://example.com" :disabled="projectSaving">
+          </div>
+          <div class="portfolio-admin-form-row">
+            <div class="field">
+              <label for="project-order">排序数字</label>
+              <input id="project-order" v-model.number="projectForm.sortOrder" class="input" type="number" step="1" min="0" max="9999" required :disabled="projectSaving">
+            </div>
+            <div class="field">
+              <label for="project-status">展示状态</label>
+              <select id="project-status" v-model="projectForm.status" class="input" :disabled="projectSaving">
+                <option value="APPROVED">公开</option>
+                <option value="HIDDEN">隐藏</option>
+              </select>
+            </div>
+          </div>
+          <p v-if="projectFormError" class="resume-message resume-message-error" role="alert">{{ projectFormError }}</p>
+          <button class="btn btn-primary" type="submit" :disabled="projectSaving">{{ projectSaving ? '正在保存…' : (editingProjectId ? '保存修改' : '添加项目') }}</button>
+        </form>
+      </div>
+    </section>
   </section>
 </template>
 
@@ -129,6 +201,15 @@ const fileInput = ref(null)
 const uploading = ref(false)
 const formError = ref('')
 const successMessage = ref('')
+const projects = ref([])
+const projectsLoading = ref(true)
+const projectsError = ref('')
+const projectSuccess = ref('')
+const projectFormError = ref('')
+const projectSaving = ref(false)
+const editingProjectId = ref(null)
+const emptyProjectForm = () => ({ title: '', summary: '', techStack: '', link: '', sortOrder: 0, status: 'APPROVED' })
+const projectForm = ref(emptyProjectForm())
 
 const serverPreviewUrl = computed(() => withVersion(resume.value?.previewUrl))
 const serverDownloadUrl = computed(() => withVersion(resume.value?.downloadUrl))
@@ -240,6 +321,105 @@ async function uploadResume() {
   }
 }
 
-onMounted(loadResume)
+async function loadProjects() {
+  projectsLoading.value = true
+  projectsError.value = ''
+  try {
+    projects.value = await api.adminPortfolioList()
+  } catch (e) {
+    projectsError.value = e.message || '读取项目经历失败'
+  } finally {
+    projectsLoading.value = false
+  }
+}
+
+function resetProjectForm() {
+  editingProjectId.value = null
+  projectForm.value = emptyProjectForm()
+  projectFormError.value = ''
+}
+
+function editProject(project) {
+  editingProjectId.value = project.id
+  projectForm.value = {
+    title: project.title || '', summary: project.summary || '',
+    techStack: project.techStack || '', link: project.link || '',
+    sortOrder: project.sortOrder ?? 0, status: project.status === 'APPROVED' ? 'APPROVED' : 'HIDDEN'
+  }
+  projectFormError.value = ''
+  projectSuccess.value = ''
+}
+
+async function saveProject() {
+  if (projectSaving.value) return
+  projectFormError.value = ''
+  projectSuccess.value = ''
+  const data = { ...projectForm.value, title: projectForm.value.title.trim() }
+  if (!data.title) {
+    projectFormError.value = '请填写项目名称。'
+    return
+  }
+  if (!Number.isInteger(data.sortOrder) || data.sortOrder < 0 || data.sortOrder > 9999) {
+    projectFormError.value = '排序数字须为 0 到 9999 的整数。'
+    return
+  }
+  if (data.link && !/^https?:\/\//i.test(data.link)) {
+    projectFormError.value = '项目链接须以 http:// 或 https:// 开头。'
+    return
+  }
+  projectSaving.value = true
+  try {
+    if (editingProjectId.value) {
+      await api.adminPortfolioUpdate(editingProjectId.value, data)
+      projectSuccess.value = '项目经历已更新。'
+    } else {
+      await api.adminPortfolioAdd(data)
+      projectSuccess.value = '项目经历已添加。'
+    }
+    resetProjectForm()
+    await loadProjects()
+  } catch (e) {
+    projectFormError.value = e.message || '保存项目经历失败'
+  } finally {
+    projectSaving.value = false
+  }
+}
+
+async function deleteProject(project) {
+  if (projectSaving.value || !window.confirm(`确定永久删除“${project.title}”吗？此操作无法撤销。`)) return
+  projectSaving.value = true
+  projectsError.value = ''
+  projectSuccess.value = ''
+  try {
+    await api.adminPortfolioDelete(project.id)
+    if (editingProjectId.value === project.id) resetProjectForm()
+    projectSuccess.value = '项目经历已删除。'
+    await loadProjects()
+  } catch (e) {
+    projectsError.value = e.message || '删除项目经历失败'
+  } finally {
+    projectSaving.value = false
+  }
+}
+
+onMounted(() => {
+  loadResume()
+  loadProjects()
+})
 onBeforeUnmount(revokeSelectedPreview)
 </script>
+
+<style scoped>
+.portfolio-admin { margin-top: 64px; }
+.portfolio-admin-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); gap: 24px; align-items: start; }
+.portfolio-admin-list h3, .portfolio-admin-form h3 { margin-bottom: 20px; font-size: 18px; }
+.portfolio-admin-item { padding: 18px 0; border-top: 1px solid var(--hairline); }
+.portfolio-admin-item-head, .portfolio-admin-actions { display: flex; align-items: center; gap: 12px; }
+.portfolio-admin-item-head { justify-content: space-between; }
+.portfolio-admin-item p { margin: 8px 0; color: var(--body); }
+.portfolio-admin-meta { color: var(--mute); font-size: 12px; }
+.portfolio-admin-actions { margin-top: 12px; }
+.portfolio-admin-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.portfolio-admin-form .input, .portfolio-admin-form .textarea { width: 100%; }
+@media (max-width: 800px) { .portfolio-admin-grid { grid-template-columns: 1fr; } }
+</style>

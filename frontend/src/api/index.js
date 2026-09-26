@@ -37,6 +37,8 @@ export const api = {
   adminPublishImage: (formData) => http.post('/admin/publish/image', formData),
   adminPortfolioList: () => http.get('/admin/portfolio/list'),
   adminPortfolioAdd: (data) => http.post('/admin/portfolio', null, { params: data }),
+  adminPortfolioUpdate: (id, data) => http.post(`/admin/portfolio/${id}`, null, { params: data }),
+  adminPortfolioDelete: (id) => http.delete(`/admin/portfolio/${id}`),
   // PDF 体积可达 20MB，单独放宽上传超时，避免慢速网络误报失败
   adminResumeUpload: (formData) => http.post('/admin/resume', formData, { timeout: 120000 })
 }
